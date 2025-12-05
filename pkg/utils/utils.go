@@ -3,6 +3,7 @@ package utils
 import (
 	"slices"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
@@ -31,4 +32,8 @@ func RemoveEmptyStrings(l []string) []string {
 			}
 		}
 	})
+}
+
+func NoFilesEmptyCompletion(cmd *cobra.Command, args []string, complete string) ([]string, cobra.ShellCompDirective) {
+	return nil, cobra.ShellCompDirectiveNoFileComp
 }

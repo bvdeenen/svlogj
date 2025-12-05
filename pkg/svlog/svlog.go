@@ -19,12 +19,12 @@ func ParseLog(stop_when_finished bool, line_handler func(types.Info, types.Parse
 
 	line_pattern := regexp.MustCompile(`^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+) ((\w+)\.(\w+):)?(.*).*$`)
 
-	// Heuristically find the entity that created the message
-	entity_pat := regexp.MustCompile(`([\w-]+)\[(\d+)\]`)
-	entity_pat2 := regexp.MustCompile(`([a-zA-Z][a-zA-Z0-9-]+):`)
-	all_numbers := regexp.MustCompile(`^[0-9-.]+$`)
-
-	cmd := exec.Command("svlogtail")
+	var cmd *exec.Cmd
+	if len(c.Service) == 0 {
+		cmd = exec.Command("svlogtail")
+	} else {
+		cmd = exec.Command("svlogtail", c.Service)
+	}
 	pipe, _ := cmd.StdoutPipe()
 	defer pipe.Close()
 	cmd.Start()
@@ -65,23 +65,32 @@ func ParseLog(stop_when_finished bool, line_handler func(types.Info, types.Parse
 			Pid:       0,
 			Message:   m[5],
 		}
-
-		if info.Facility != "kern" {
-			entity := entity_pat.FindStringSubmatch(info.Message)
-			if entity != nil {
-				pid, _ := strconv.Atoi(entity[2])
-				info.Entity, info.Pid = entity[1], pid
-			} else {
-				entity = entity_pat2.FindStringSubmatch(info.Message)
-				if entity != nil {
-					if all_numbers.FindStringSubmatch(entity[1]) == nil {
-						info.Entity = entity[1]
-					}
-				}
-			}
-		}
+		guessEntityAndPid(&info)
 		line_handler(info, c)
 		running.Store(true)
+	}
+}
+
+func guessEntityAndPid(info *types.Info) {
+	// kernel messages have no pattern whatsoever
+	if info.Facility == "kern" {
+		return
+	}
+	// Heuristically find the entity that created the message
+	entity_pat := regexp.MustCompile(`([\w-]+)\[(\d+)\]`)
+	entity_pat2 := regexp.MustCompile(`([a-zA-Z][a-zA-Z0-9-]+):`)
+	all_numbers := regexp.MustCompile(`^[0-9-.]+$`)
+	entity := entity_pat.FindStringSubmatch(info.Message)
+	if entity != nil {
+		pid, _ := strconv.Atoi(entity[2])
+		info.Entity, info.Pid = entity[1], pid
+	} else {
+		entity = entity_pat2.FindStringSubmatch(info.Message)
+		if entity != nil {
+			if all_numbers.FindStringSubmatch(entity[1]) == nil {
+				info.Entity = entity[1]
+			}
+		}
 	}
 }
 
@@ -95,6 +104,6 @@ func HandleInterpretedLine(info types.Info, parse_config types.ParseConfig) {
 	if len(parse_config.Facility) != 0 && info.Facility != parse_config.Facility {
 		return
 	}
-	_, _ = fmt.Printf("%v \033[32m%s\033[0m.\033[36m%s\033[0m \033[31m%s\033[0m (%d) %s \n",
+	_, _ = fmt.Printf("%-38v \033[32m%6s\033[0m.\033[36m%-6s\033[0m \033[31m%s\033[0m (%d) %s \n",
 		info.Timestamp, info.Facility, info.Level, info.Entity, info.Pid, info.Message)
 }

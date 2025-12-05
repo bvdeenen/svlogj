@@ -22,8 +22,9 @@ const service_flag = "service"
 var conf types.Config
 
 var rootCmd = &cobra.Command{
-	Use:   "svlogj",
-	Short: "Frontend for svlogtail",
+	Use:               "svlogj",
+	Short:             "Frontend for svlogtail",
+	ValidArgsFunction: utils.NoFilesEmptyCompletion,
 	Run: func(cmd *cobra.Command, args []string) {
 		flags := cmd.Flags()
 		if utils.GetBool(flags, generate_config_flag) {
@@ -63,20 +64,12 @@ func Execute() {
 
 func init() {
 	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.svlogj.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP(generate_config_flag, "c", false, "Generate Config File")
-	rootCmd.Flags().StringP(generate_completion_flag, "p", "", "Generate Completion for bash|zsh|fish|powershell")
+	rootCmd.Flags().BoolP(generate_config_flag, "c", false, "Generate Config File from the socklog configuration and current logs content")
+	rootCmd.Flags().StringP(generate_completion_flag, "p", "", "Generate Completion for bash, zsh or fish")
 	rootCmd.Flags().StringP(facility_flag, "f", "", "select facility")
 	rootCmd.Flags().StringP(level_flag, "l", "", "select level")
 	rootCmd.Flags().StringP(entity_flag, "e", "", "select entity")
 	rootCmd.Flags().StringP(service_flag, "s", "", "select service")
-	rootCmd.ValidArgs = []string{}
 
 	err := rootCmd.RegisterFlagCompletionFunc(facility_flag,
 		func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {

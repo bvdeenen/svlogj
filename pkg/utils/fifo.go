@@ -1,35 +1,40 @@
 package utils
 
-type Fifo struct {
-	fifo []interface{}
+type Fifo[T interface{}] struct {
+	fifo []T
 	tail int
 	head int
-	size int
+	cap  int
+	fill int
 }
 
-func NewFifo(s int) Fifo {
-	f := Fifo{
-		fifo: make([]interface{}, s),
+func NewFifo[T interface{}](s int) Fifo[T] {
+	f := Fifo[T]{
+		fifo: make([]T, s),
 		tail: 0,
 		head: 0,
-		size: s,
+		cap:  s,
+		fill: 0,
 	}
 	return f
 }
 
-func (f *Fifo) Push(i interface{}) {
+func (f *Fifo[T]) Push(i T) {
 	f.fifo[f.head] = i
-	f.head = (f.head + 1) % f.size
-	if f.head == f.tail {
-		f.tail = (f.tail + 1) % f.size
+	f.fill += 1
+	f.head = (f.head + 1) % f.cap
+	if f.fill > f.cap {
+		f.tail = (f.tail + 1) % f.cap
+		f.fill -= 1
 	}
 }
 
-func (f *Fifo) Get() *interface{} {
-	f.head = (f.head - 1 + f.size) % f.size
-	if f.head == f.tail {
+func (f *Fifo[T]) Get() *T {
+	if f.fill == 0 {
 		return nil
-	} else {
-		return &f.fifo[f.head]
 	}
+	f.fill -= 1
+	v := f.fifo[f.tail]
+	f.tail = (f.tail + 1) % f.cap
+	return &v
 }

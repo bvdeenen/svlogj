@@ -2,6 +2,8 @@ package utils
 
 import "errors"
 
+var empty = errors.New("empty")
+
 type Fifo[T interface{}] struct {
 	fifo []T
 	tail int
@@ -34,7 +36,7 @@ func (f *Fifo[T]) Push(i T) {
 func (f *Fifo[T]) Get() (T, error) {
 	if f.Fill == 0 {
 		var result T
-		return result, errors.New("empty")
+		return result, empty
 	}
 	f.Fill -= 1
 	v := f.fifo[f.tail]

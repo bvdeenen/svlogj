@@ -25,9 +25,10 @@ type Grep struct {
 	Context int
 }
 type ParseConfig struct {
-	Facility string
-	Level    string
-	Entity   string
-	Service  string
-	Grep     Grep
+	Facility   string
+	Level      string
+	Entity     string
+	Service    string
+	Grep       Grep
+	TimeConfig string
 }

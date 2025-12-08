@@ -18,6 +18,7 @@ const facility_flag = "facility"
 const level_flag = "level"
 const entity_flag = "entity"
 const service_flag = "service"
+const time_config_flag = "time-config"
 
 // GREP style context
 const after_flag = "after"
@@ -62,6 +63,7 @@ var rootCmd = &cobra.Command{
 				utils.GetInt(flags, before_flag),
 				utils.GetInt(flags, context_flag),
 			},
+			TimeConfig: utils.GetString(flags, time_config_flag),
 		})
 	},
 }
@@ -84,8 +86,14 @@ func init() {
 	rootCmd.Flags().IntP(after_flag, "A", 0, "grep after")
 	rootCmd.Flags().IntP(before_flag, "B", 0, "grep before")
 	rootCmd.Flags().IntP(context_flag, "C", 0, "grep context")
+	rootCmd.Flags().String(time_config_flag, "", "timeconfig")
 
-	err := rootCmd.RegisterFlagCompletionFunc(facility_flag,
+	err := rootCmd.RegisterFlagCompletionFunc(time_config_flag,
+		func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+			return []string{"uptime_s", "local"}, cobra.ShellCompDirectiveNoFileComp
+		})
+
+	err = rootCmd.RegisterFlagCompletionFunc(facility_flag,
 		func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 			if len(conf.Facilities) == 0 {
 				conf = config.LoadConfig()

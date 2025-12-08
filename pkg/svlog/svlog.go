@@ -3,9 +3,11 @@ package svlog
 import (
 	"bufio"
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
+	"strings"
 	"svlogj/pkg/types"
 	"svlogj/pkg/utils"
 	"sync/atomic"
@@ -19,6 +21,7 @@ type SvLogger struct {
 	Fifo          utils.Fifo[types.Info]
 	printedLineNr int // for block separation
 	selectLineNr  int // the line nr that grepped true
+	bootTime      time.Time
 }
 
 func Svlog(c types.ParseConfig) {
@@ -31,7 +34,23 @@ func Svlog(c types.ParseConfig) {
 	logger.ParseLog()
 }
 
+func (self *SvLogger) parseBootTime() {
+	file, err := os.Open("/proc/uptime")
+	utils.Check(err)
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	scanner.Scan()
+	line := scanner.Text()
+	uptime, _ := strconv.ParseFloat(strings.Split(line, " ")[0], 64)
+	duration := time.Duration(-uptime * float64(time.Second))
+	self.bootTime = time.Now().Add(duration)
+	fmt.Printf("%v\n", self.bootTime)
+
+}
+
 func (self *SvLogger) ParseLog() {
+
+	self.parseBootTime()
 
 	if self.ParseConfig.Grep.Before != 0 {
 		self.Fifo = utils.NewFifo[types.Info](self.ParseConfig.Grep.Before)
@@ -124,19 +143,21 @@ func (self *SvLogger) HandleInterpretedLine(info types.Info) {
 		if self.printedLineNr > 0 && i.LineNr != self.printedLineNr+1 {
 			_, _ = fmt.Printf("---\n")
 		}
+		timestamp := self.displayTimestamp(i)
 		_, _ = fmt.Printf("%-06d %-38v \033[32m%6s\033[0m.\033[36m%-6s\033[0m \033[31m%s\033[0m (%d) %s \n",
-			i.LineNr, i.Timestamp, i.Facility, i.Level, i.Entity, i.Pid, i.Message)
+			i.LineNr, timestamp, i.Facility, i.Level, i.Entity, i.Pid, i.Message)
 		self.printedLineNr = i.LineNr
 	}
-	selected := (len(parse_config.Entity) == 0 && len(parse_config.Level) == 0 && len(parse_config.Facility) == 0) ||
+	matched := (len(parse_config.Entity) == 0 && len(parse_config.Level) == 0 && len(parse_config.Facility) == 0) ||
 		len(parse_config.Entity) != 0 && info.Entity == parse_config.Entity ||
 		len(parse_config.Level) != 0 && info.Level == parse_config.Level ||
 		len(parse_config.Facility) != 0 && info.Facility == parse_config.Facility
 
-	if selected {
+	if matched {
 		self.selectLineNr = info.LineNr
 	}
-	if selected && self.Fifo.Fill > 0 {
+	if matched && self.Fifo.Fill > 0 {
+		// handles the grep BEFORE case
 		for {
 			v, err := self.Fifo.Get()
 			if err != nil {
@@ -145,15 +166,31 @@ func (self *SvLogger) HandleInterpretedLine(info types.Info) {
 			printer(v)
 		}
 	}
-	if selected {
+	if matched {
 		printer(info)
 	} else {
 		if parse_config.Grep.After > 0 && self.selectLineNr >= 0 && (info.LineNr-self.selectLineNr) <= parse_config.Grep.After {
+			// handles the grep AFTER case
 			printer(info)
 		} else {
+			// when not printing just fill the fifo
 			if self.Fifo.Cap > 0 {
 				self.Fifo.Push(info)
 			}
 		}
 	}
+}
+
+func (self *SvLogger) displayTimestamp(i types.Info) string {
+	switch self.ParseConfig.TimeConfig {
+	case "uptime_s":
+		seconds := i.Timestamp.Sub(self.bootTime).Seconds()
+		return fmt.Sprintf("%7.03fs", seconds)
+		break
+	case "local":
+		location, _ := time.LoadLocation("Europe/Madrid")
+		return i.Timestamp.In(location).Format(time.RFC3339)
+		break
+	}
+	return i.Timestamp.Format(time.RFC3339)
 }

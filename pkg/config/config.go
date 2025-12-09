@@ -4,12 +4,10 @@ import (
 	"bufio"
 	"encoding/json"
 	"io/ioutil"
-	"maps"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strings"
 	"svlogj/pkg/svlog"
 	"svlogj/pkg/types"
@@ -19,32 +17,31 @@ import (
 )
 
 func ParseAndStoreConfig() {
-	config := generateConfig()
-	storeConfig(config)
+	storeConfig(generateConfig())
 }
 
 func generateConfig() types.Config {
-	facilities := make(map[string]struct{})
-	levels := make(map[string]struct{})
-	what := make(map[string]struct{})
-	entities := make(map[string]struct{})
-	services := make([]string, 10)
+	facilities := utils.NewSet[string]()
+	levels := utils.NewSet[string]()
+	what := utils.NewSet[string]()
+	entities := utils.NewSet[string]()
+	services := utils.NewSet[string]()
 	parse := func(line string) {
 		re := regexp.MustCompile(`^([^.]+)\.([^:]+)(?::?(.*))$`)
 		if 0 == len(line) || line == "*" {
 			return
 		}
 		m := re.FindStringSubmatch(line)
-		facilities[m[1]] = struct{}{}
-		levels[m[2]] = struct{}{}
-		what[m[3]] = struct{}{}
+		facilities.Add(m[1])
+		levels.Add(m[2])
+		what.Add(m[3])
 	}
 
 	root := "/var/log/socklog"
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		utils.Check(err)
 		if d.IsDir() && path != root {
-			services = append(services, d.Name())
+			services.Add(d.Name())
 		}
 		if d.Name() == "config" && !d.IsDir() {
 			file, err := os.Open(path)
@@ -75,19 +72,18 @@ func generateConfig() types.Config {
 	svLogger := svlog.SvLogger{
 		Follow: false,
 		LineHandler: func(info types.Info) {
-			entities[info.Entity] = struct{}{}
+			entities.Add(info.Entity)
 		},
 	}
 
 	// parse through all of the socklog files to find all the entities
 	svLogger.ParseLog()
-	config := types.Config{
-		Facilities: utils.RemoveEmptyStrings(slices.Collect(maps.Keys(facilities))),
-		Levels:     utils.RemoveEmptyStrings(slices.Collect(maps.Keys(levels))),
-		Entities:   utils.RemoveEmptyStrings(slices.Collect(maps.Keys(entities))),
-		Services:   utils.RemoveEmptyStrings(services),
+	return types.Config{
+		Facilities: utils.RemoveEmptyStrings(facilities.Entries()),
+		Levels:     utils.RemoveEmptyStrings(levels.Entries()),
+		Entities:   utils.RemoveEmptyStrings(entities.Entries()),
+		Services:   utils.RemoveEmptyStrings(services.Entries()),
 	}
-	return config
 }
 
 func LoadConfig() types.Config {

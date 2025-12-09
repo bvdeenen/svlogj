@@ -20,17 +20,17 @@ type SvLogger struct {
 	Follow        bool
 	Fifo          utils.Fifo[types.Info]
 	printedLineNr int // for block separation
-	selectLineNr  int // the line nr that grepped true
+	matchLineNr   int // the line nr that grepped true
 	bootTime      time.Time
 }
 
 func Svlog(c types.ParseConfig) {
 	logger := SvLogger{
-		ParseConfig:  c,
-		Follow:       c.Follow,
-		selectLineNr: -1,
+		ParseConfig: c,
+		Follow:      c.Follow,
+		matchLineNr: -1,
 	}
-	logger.LineHandler = logger.HandleInterpretedLine
+	logger.LineHandler = logger.MaybePrintLine
 	logger.ParseLog()
 }
 
@@ -44,8 +44,6 @@ func (self *SvLogger) parseBootTime() {
 	uptime, _ := strconv.ParseFloat(strings.Split(line, " ")[0], 64)
 	duration := time.Duration(-uptime * float64(time.Second))
 	self.bootTime = time.Now().Add(duration)
-	fmt.Printf("%v\n", self.bootTime)
-
 }
 
 func (self *SvLogger) ParseLog() {
@@ -74,10 +72,9 @@ func (self *SvLogger) ParseLog() {
 		go func() {
 			for {
 				running.Store(false)
-				time.Sleep(100 * time.Millisecond)
+				time.Sleep(200 * time.Millisecond)
 				// the main loop should have kept the running to true
 				if !running.Load() {
-					//fmt.Printf("Closing svlogtail because of timeout\n")
 					pipe.Close()
 					break
 				}
@@ -101,27 +98,28 @@ func (self *SvLogger) ParseLog() {
 			Timestamp: t,
 			Facility:  m[3],
 			Level:     m[4],
-			Entity:    "",
-			Pid:       0,
 			Message:   m[5],
 			LineNr:    lineNr,
 		}
 		guessEntityAndPid(&info)
 		self.LineHandler(info)
-		running.Store(true)
+		running.Store(true) // for the 'follow' functionality
 		lineNr += 1
 	}
 }
 
+// Heuristically tries to find the entity name and PID from the message line.
+//
+// Not perfect but seems to be able to find entities like NetworkManager, dbus, ...
 func guessEntityAndPid(info *types.Info) {
-	// kernel messages have no pattern whatsoever
+	// kernel messages have no pattern whatsoever. Leave the default values
 	if info.Facility == "kern" {
 		return
 	}
-	// Heuristically find the entity that created the message
+	// look for entity-name[pid]
 	entity_pat := regexp.MustCompile(`([\w-]+)\[(\d+)\]`)
-	entity_pat2 := regexp.MustCompile(`([a-zA-Z][a-zA-Z0-9-]+):`)
-	all_numbers := regexp.MustCompile(`^[0-9-.]+$`)
+	// look for entity-name:
+	entity_pat2 := regexp.MustCompile(`[, \t]([a-zA-Z][a-zA-Z0-9-]+):`)
 	entity := entity_pat.FindStringSubmatch(info.Message)
 	if entity != nil {
 		pid, _ := strconv.Atoi(entity[2])
@@ -129,63 +127,66 @@ func guessEntityAndPid(info *types.Info) {
 	} else {
 		entity = entity_pat2.FindStringSubmatch(info.Message)
 		if entity != nil {
-			if all_numbers.FindStringSubmatch(entity[1]) == nil {
-				info.Entity = entity[1]
-			}
+			info.Entity = entity[1]
 		}
 	}
 }
 
-func (self *SvLogger) printField(v string, m string, f string) {
-	if !self.ParseConfig.Monochrome && v == m {
-		f = "\033[" + self.ParseConfig.AnsiColor + "m" + f + "\033[0m"
+// print a field value, optionally coloring
+func (self *SvLogger) printField(value string, selector string, formatString string) {
+	if !self.ParseConfig.Monochrome && value == selector {
+		formatString = "\033[" + self.ParseConfig.AnsiColor + "m" + formatString + "\033[0m"
 	}
-	_, _ = fmt.Printf(f, v)
+	_, _ = fmt.Printf(formatString, value)
 }
 
+// print one log line
 func (self *SvLogger) printLine(i types.Info) {
 	if self.printedLineNr > 0 && i.LineNr != self.printedLineNr+1 {
+		// print separator line if non-consecutive
 		_, _ = fmt.Printf("---\n")
 	}
-	_, _ = fmt.Printf("%s ", self.displayTimestamp(i))
+	_, _ = fmt.Printf("%s ", self.formatTimestamp(i))
 	self.printField(i.Facility, self.ParseConfig.Facility, "%6s.")
 	self.printField(i.Level, self.ParseConfig.Level, "%-6s ")
 	self.printField(i.Entity, self.ParseConfig.Entity, "%s")
 	_, _ = fmt.Printf(" (%d) %s\n", i.Pid, i.Message)
-
 	self.printedLineNr = i.LineNr
-
 }
 
-func (self *SvLogger) HandleInterpretedLine(info types.Info) {
-
-	parse_config := self.ParseConfig
-	matched := (len(parse_config.Entity) == 0 && len(parse_config.Level) == 0 && len(parse_config.Facility) == 0) ||
-		len(parse_config.Entity) != 0 && info.Entity == parse_config.Entity ||
-		len(parse_config.Level) != 0 && info.Level == parse_config.Level ||
-		len(parse_config.Facility) != 0 && info.Facility == parse_config.Facility
+// print a log line if the conditions match
+//
+// will also handle grep BEFORE and AFTER and CONTEXT values
+func (self *SvLogger) MaybePrintLine(info types.Info) {
+	conf := self.ParseConfig
+	matched := (len(conf.Entity) == 0 && len(conf.Level) == 0 && len(conf.Facility) == 0) ||
+		len(conf.Entity) != 0 && info.Entity == conf.Entity ||
+		len(conf.Level) != 0 && info.Level == conf.Level ||
+		len(conf.Facility) != 0 && info.Facility == conf.Facility
 
 	if matched {
-		self.selectLineNr = info.LineNr
+		self.matchLineNr = info.LineNr
 	}
 	if matched && self.Fifo.Fill > 0 {
 		// handles the grep BEFORE case
 		for {
-			v, err := self.Fifo.Get()
-			if err != nil {
+			v, ok := self.Fifo.Get()
+			if !ok {
 				break
 			}
 			self.printLine(v)
 		}
 	}
 	if matched {
+		// we're on the line of the match. Just print it
 		self.printLine(info)
 	} else {
-		if parse_config.Grep.After > 0 && self.selectLineNr >= 0 && (info.LineNr-self.selectLineNr) <= parse_config.Grep.After {
+		// we might need to handle the grep AFTER case
+		if conf.Grep.After > 0 && self.matchLineNr >= 0 && (info.LineNr-self.matchLineNr) <= conf.Grep.After {
 			// handles the grep AFTER case
 			self.printLine(info)
 		} else {
-			// when not printing just fill the fifo
+			// when not printing just fill the fifo if there's a grep BEFORE or CONTEXT
 			if self.Fifo.Cap > 0 {
 				self.Fifo.Push(info)
 			}
@@ -193,16 +194,15 @@ func (self *SvLogger) HandleInterpretedLine(info types.Info) {
 	}
 }
 
-func (self *SvLogger) displayTimestamp(i types.Info) string {
+// return a timestamp based on the configuration
+func (self *SvLogger) formatTimestamp(info types.Info) string {
 	switch self.ParseConfig.TimeConfig {
 	case "uptime_s":
-		seconds := i.Timestamp.Sub(self.bootTime).Seconds()
+		seconds := info.Timestamp.Sub(self.bootTime).Seconds()
 		return fmt.Sprintf("%9.03fs", seconds)
-		break
 	case "local":
 		location, _ := time.LoadLocation("Europe/Madrid")
-		return i.Timestamp.In(location).Format(time.RFC3339)
-		break
+		return info.Timestamp.In(location).Format(time.RFC3339)
 	}
-	return i.Timestamp.Format(time.RFC3339)
+	return info.Timestamp.Format(time.RFC3339)
 }

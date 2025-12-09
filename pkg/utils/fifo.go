@@ -33,13 +33,13 @@ func (f *Fifo[T]) Push(i T) {
 	}
 }
 
-func (f *Fifo[T]) Get() (T, error) {
+func (f *Fifo[T]) Get() (T, bool) {
 	if f.Fill == 0 {
 		var result T
-		return result, empty
+		return result, false
 	}
 	f.Fill -= 1
 	v := f.fifo[f.tail]
 	f.tail = (f.tail + 1) % f.Cap
-	return v, nil
+	return v, true
 }

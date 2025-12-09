@@ -15,7 +15,7 @@ func NewSet[T comparable]() Set[T] {
 	}
 }
 
-func (s *Set[T]) keys() iter.Seq[T] {
+func (s *Set[T]) Entries() iter.Seq[T] {
 	return maps.Keys(s.set)
 }
 
@@ -36,19 +36,19 @@ func (s *Set[T]) AddMultiple(i []T) {
 	}
 }
 func (s *Set[T]) Union(other Set[T]) {
-	for v := range other.keys() {
+	for v := range other.Entries() {
 		s.set[v] = struct{}{}
 	}
 }
 func (s *Set[T]) Sub(other Set[T]) {
-	for v := range other.keys() {
+	for v := range other.Entries() {
 		delete(s.set, v)
 	}
 }
 
 func Intersect[T comparable](self Set[T], other Set[T]) Set[T] {
 	result := NewSet[T]()
-	for v := range self.keys() {
+	for v := range self.Entries() {
 		if other.Get(v) {
 			result.Add(v)
 		}

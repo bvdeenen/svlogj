@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"iter"
 	"os"
 	"slices"
 
@@ -33,9 +34,9 @@ func GetInt(flags *pflag.FlagSet, name string, lower int, upper int) int {
 	return g
 }
 
-func RemoveEmptyStrings(l []string) []string {
+func RemoveEmptyStrings(l iter.Seq[string]) []string {
 	return slices.Collect(func(yield func(string) bool) {
-		for _, v := range l {
+		for v := range l {
 			if len(v) != 0 {
 				if !yield(v) {
 					return

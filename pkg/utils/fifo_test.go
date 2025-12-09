@@ -38,10 +38,9 @@ func TestPushWithinSize(t *testing.T) {
 	check(t, val, 2)
 	val, _ = f.Get()
 	check(t, val, 3)
-	_, err := f.Get()
-	if err == nil {
-		t.Errorf("Expected error, got nil")
-
+	_, ok := f.Get()
+	if ok {
+		t.Errorf("Expected false, got true")
 	}
 }
 
@@ -55,9 +54,9 @@ func TestPushBelowSize(t *testing.T) {
 	check(t, val, 1)
 	val, _ = f.Get()
 	check(t, val, 2)
-	_, err := f.Get()
-	if err == nil {
-		t.Errorf("Expected error, got nil")
+	_, ok := f.Get()
+	if ok {
+		t.Errorf("Expected false, got true")
 	}
 	f.Push(3)
 	f.Push(4)
@@ -65,10 +64,9 @@ func TestPushBelowSize(t *testing.T) {
 	check(t, val, 3)
 	val, _ = f.Get()
 	check(t, val, 4)
-	_, err = f.Get()
-	if err == nil {
-		t.Errorf("Expected error, got nil")
-
+	_, ok = f.Get()
+	if ok {
+		t.Errorf("Expected false, got true")
 	}
 }
 
@@ -85,18 +83,16 @@ func TestPushOverflow(t *testing.T) {
 	check(t, val, 3)
 	val, _ = f.Get()
 	check(t, val, 4)
-	_, err := f.Get()
-	if err == nil {
-		t.Errorf("Expected error, got nil")
-
+	_, ok := f.Get()
+	if ok {
+		t.Errorf("Expected false, got true")
 	}
 }
 
 func TestGetFromEmpty(t *testing.T) {
 	f := NewFifo[int](3)
-	_, err := f.Get()
-	if err == nil {
-		t.Errorf("Expected error, got nil")
-
+	_, ok := f.Get()
+	if ok {
+		t.Errorf("Expected false, got true")
 	}
 }

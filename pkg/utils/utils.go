@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"fmt"
+	"os"
 	"slices"
 
 	"github.com/spf13/cobra"
@@ -21,8 +23,13 @@ func GetString(flags *pflag.FlagSet, name string) string {
 	g, _ := flags.GetString(name)
 	return g
 }
-func GetInt(flags *pflag.FlagSet, name string) int {
+func GetInt(flags *pflag.FlagSet, name string, lower int, upper int) int {
 	g, _ := flags.GetInt(name)
+	if g < lower || g > upper {
+		err := fmt.Errorf("Flag value of '%s' %d not within [%d, %d]\n", name, g, lower, upper)
+		os.Stderr.WriteString(err.Error())
+		os.Exit(1)
+	}
 	return g
 }
 

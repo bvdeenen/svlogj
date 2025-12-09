@@ -27,7 +27,7 @@ type SvLogger struct {
 func Svlog(c types.ParseConfig) {
 	logger := SvLogger{
 		ParseConfig:  c,
-		Follow:       true,
+		Follow:       c.Follow,
 		selectLineNr: -1,
 	}
 	logger.LineHandler = logger.HandleInterpretedLine
@@ -136,18 +136,30 @@ func guessEntityAndPid(info *types.Info) {
 	}
 }
 
+func (self *SvLogger) printField(v string, m string, f string) {
+	if !self.ParseConfig.Monochrome && v == m {
+		f = "\033[" + self.ParseConfig.AnsiColor + "m" + f + "\033[0m"
+	}
+	_, _ = fmt.Printf(f, v)
+}
+
+func (self *SvLogger) printLine(i types.Info) {
+	if self.printedLineNr > 0 && i.LineNr != self.printedLineNr+1 {
+		_, _ = fmt.Printf("---\n")
+	}
+	_, _ = fmt.Printf("%s ", self.displayTimestamp(i))
+	self.printField(i.Facility, self.ParseConfig.Facility, "%6s.")
+	self.printField(i.Level, self.ParseConfig.Level, "%-6s ")
+	self.printField(i.Entity, self.ParseConfig.Entity, "%s")
+	_, _ = fmt.Printf(" (%d) %s\n", i.Pid, i.Message)
+
+	self.printedLineNr = i.LineNr
+
+}
+
 func (self *SvLogger) HandleInterpretedLine(info types.Info) {
 
 	parse_config := self.ParseConfig
-	printer := func(i types.Info) {
-		if self.printedLineNr > 0 && i.LineNr != self.printedLineNr+1 {
-			_, _ = fmt.Printf("---\n")
-		}
-		timestamp := self.displayTimestamp(i)
-		_, _ = fmt.Printf("%-06d %-38v \033[32m%6s\033[0m.\033[36m%-6s\033[0m \033[31m%s\033[0m (%d) %s \n",
-			i.LineNr, timestamp, i.Facility, i.Level, i.Entity, i.Pid, i.Message)
-		self.printedLineNr = i.LineNr
-	}
 	matched := (len(parse_config.Entity) == 0 && len(parse_config.Level) == 0 && len(parse_config.Facility) == 0) ||
 		len(parse_config.Entity) != 0 && info.Entity == parse_config.Entity ||
 		len(parse_config.Level) != 0 && info.Level == parse_config.Level ||
@@ -163,15 +175,15 @@ func (self *SvLogger) HandleInterpretedLine(info types.Info) {
 			if err != nil {
 				break
 			}
-			printer(v)
+			self.printLine(v)
 		}
 	}
 	if matched {
-		printer(info)
+		self.printLine(info)
 	} else {
 		if parse_config.Grep.After > 0 && self.selectLineNr >= 0 && (info.LineNr-self.selectLineNr) <= parse_config.Grep.After {
 			// handles the grep AFTER case
-			printer(info)
+			self.printLine(info)
 		} else {
 			// when not printing just fill the fifo
 			if self.Fifo.Cap > 0 {
@@ -185,7 +197,7 @@ func (self *SvLogger) displayTimestamp(i types.Info) string {
 	switch self.ParseConfig.TimeConfig {
 	case "uptime_s":
 		seconds := i.Timestamp.Sub(self.bootTime).Seconds()
-		return fmt.Sprintf("%7.03fs", seconds)
+		return fmt.Sprintf("%9.03fs", seconds)
 		break
 	case "local":
 		location, _ := time.LoadLocation("Europe/Madrid")

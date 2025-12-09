@@ -31,4 +31,7 @@ type ParseConfig struct {
 	Service    string
 	Grep       Grep
 	TimeConfig string
+	Follow     bool
+	Monochrome bool
+	AnsiColor  string
 }

@@ -19,6 +19,9 @@ const level_flag = "level"
 const entity_flag = "entity"
 const service_flag = "service"
 const time_config_flag = "time-config"
+const follow_flag = "follow"
+const monochrome_flag = "monochrome"
+const ansi_color_flag = "ansi-color"
 
 // GREP style context
 const after_flag = "after"
@@ -53,17 +56,21 @@ var rootCmd = &cobra.Command{
 			}
 			return
 		}
+		context := utils.GetInt(flags, context_flag, 0, 20)
 		svlog.Svlog(types.ParseConfig{
-			Facility: utils.GetString(flags, facility_flag),
-			Level:    utils.GetString(flags, level_flag),
-			Entity:   utils.GetString(flags, entity_flag),
-			Service:  utils.GetString(flags, service_flag),
+			Facility:  utils.GetString(flags, facility_flag),
+			Level:     utils.GetString(flags, level_flag),
+			Entity:    utils.GetString(flags, entity_flag),
+			Service:   utils.GetString(flags, service_flag),
+			AnsiColor: utils.GetString(flags, ansi_color_flag),
 			Grep: types.Grep{
-				utils.GetInt(flags, after_flag),
-				utils.GetInt(flags, before_flag),
-				utils.GetInt(flags, context_flag),
+				max(context, utils.GetInt(flags, after_flag, 0, 20)),
+				max(context, utils.GetInt(flags, before_flag, 0, 20)),
+				context,
 			},
 			TimeConfig: utils.GetString(flags, time_config_flag),
+			Follow:     utils.GetBool(flags, follow_flag),
+			Monochrome: utils.GetBool(flags, monochrome_flag),
 		})
 	},
 }
@@ -87,6 +94,9 @@ func init() {
 	rootCmd.Flags().IntP(before_flag, "B", 0, "grep before")
 	rootCmd.Flags().IntP(context_flag, "C", 0, "grep context")
 	rootCmd.Flags().String(time_config_flag, "", "timeconfig")
+	rootCmd.Flags().Bool(follow_flag, false, "follow")
+	rootCmd.Flags().Bool(monochrome_flag, false, "monochrome output")
+	rootCmd.Flags().String(ansi_color_flag, "1;33", "ansi color for match")
 
 	err := rootCmd.RegisterFlagCompletionFunc(time_config_flag,
 		func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {

@@ -5,6 +5,7 @@ import (
 	"maps"
 )
 
+// Set logical set type.
 type Set[T comparable] struct {
 	set map[T]struct{}
 }
@@ -19,6 +20,7 @@ func (s *Set[T]) Entries() iter.Seq[T] {
 	return maps.Keys(s.set)
 }
 
+// Get returns true if an entry is present in the set
 func (s *Set[T]) Get(i T) bool {
 	_, ok := s.set[i]
 	return ok
@@ -40,16 +42,19 @@ func (s *Set[T]) Union(other Set[T]) {
 		s.set[v] = struct{}{}
 	}
 }
+
+// Sub subtract another set from this one.
 func (s *Set[T]) Sub(other Set[T]) {
 	for v := range other.Entries() {
 		delete(s.set, v)
 	}
 }
 
-func Intersect[T comparable](self Set[T], other Set[T]) Set[T] {
+// Intersect returns a new set with only the entries in both arguments
+func Intersect[T comparable](first Set[T], second Set[T]) Set[T] {
 	result := NewSet[T]()
-	for v := range self.Entries() {
-		if other.Get(v) {
+	for v := range first.Entries() {
+		if second.Get(v) {
 			result.Add(v)
 		}
 	}

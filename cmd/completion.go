@@ -11,8 +11,7 @@ import (
 var completionCmd = &cobra.Command{
 	Use:   "completion",
 	Short: "generate a completion for your shell",
-	Long: `
-	`,
+	Long: `svlogj completion bash|zsh|fish --help to see tips for installing the completion`,
 }
 
 func init() {
@@ -31,17 +30,18 @@ If it is not installed already, you can install it via your OS's package manager
 
 To load completions in your current shell session:
 
-        source <(cobra-cli completion bash)
+        source <(svlogj completion bash)
 
 To load completions for every new session, execute once:
 
 #### Linux:
 
-        cobra-cli completion bash > /etc/bash_completion.d/cobra-cli
+        svlogj completion bash > ~/.bash_completion.d/svlogj or
+        svlogj completion bash > /etc/bash_completion.d/svlogj
 
 #### macOS:
 
-        cobra-cli completion bash > /usr/local/etc/bash_completion.d/cobra-cli
+        svlogj completion bash > /usr/local/etc/bash_completion.d/svlogj
 
 You will need to start a new shell for this setup to take effect.
 	`,
@@ -64,11 +64,11 @@ var zshCompletion = &cobra.Command{
 
 	#### Linux:
 
-	cobra-cli completion zsh > "${fpath[1]}/_cobra-cli"
+	svlogj completion zsh > "${fpath[1]}/_svlogj"
 
 	#### macOS:
 
-	cobra-cli completion zsh > /usr/local/share/zsh/site-functions/_cobra-cli
+	svlogj completion zsh > /usr/local/share/zsh/site-functions/_svlogj
 
 	You will need to start a new shell for this setup to take effect.`,
 	ValidArgsFunction:          utils.NoFilesEmptyCompletion,
@@ -83,11 +83,11 @@ Generate the autocompletion script for the fish shell.
 
 To load completions in your current shell session:
 
-        cobra-cli completion fish | source
+        svlogj completion fish | source
 
 To load completions for every new session, execute once:
 
-        cobra-cli completion fish > ~/.config/fish/completions/cobra-cli.fish
+        svlogj completion fish > ~/.config/fish/completions/svlogj.fish
 
 You will need to start a new shell for this setup to take effect.
 	`,

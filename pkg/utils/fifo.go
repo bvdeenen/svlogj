@@ -1,9 +1,9 @@
 package utils
 
-import "errors"
-
-var empty = errors.New("empty")
-
+// Fifo implements a fixed maximum size fifo of Cap entries.
+//
+// Used for implementing the grep BEFORE capability, to show a certain number
+// of lines before the pattern match.
 type Fifo[T interface{}] struct {
 	fifo []T
 	tail int
@@ -23,6 +23,9 @@ func NewFifo[T interface{}](s int) Fifo[T] {
 	return f
 }
 
+// Push put a new entry in the fifo.
+//
+// If the fifo is full, the tail is moved one up
 func (f *Fifo[T]) Push(i T) {
 	f.fifo[f.head] = i
 	f.Fill += 1
@@ -33,6 +36,9 @@ func (f *Fifo[T]) Push(i T) {
 	}
 }
 
+// Get an entry from the fifo, unless it's empty
+//
+// follows the <entry>, <present> pattern we know from maps
 func (f *Fifo[T]) Get() (T, bool) {
 	if f.Fill == 0 {
 		var result T

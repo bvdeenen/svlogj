@@ -3,11 +3,10 @@ package cmd
 
 import (
 	"fmt"
+	"runtime/debug"
 
 	"github.com/spf13/cobra"
 )
-
-var Version = "dev-build"
 
 // createConfigCmd represents the createConfig command
 var versionCmd = &cobra.Command{
@@ -15,7 +14,8 @@ var versionCmd = &cobra.Command{
 	Short: "returns the version",
 	Long: ` `,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(Version)
+		b, _ := debug.ReadBuildInfo()
+		fmt.Println(b.Main.Version)
 	},
 }
 

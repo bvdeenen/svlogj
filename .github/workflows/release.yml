@@ -19,7 +19,9 @@ jobs:
       - name: Test
         run: make test
       - name: Build
-        run: make svlogj && tar cvzf svlogj.tar.gz
+        run: make svlogj
+      - name: archive
+        run: tar cvzf svlogj.tar.gz
       - name: Create Release & Upload svlogj.tar.gz
         uses: softprops/action-gh-release@v2
         with:

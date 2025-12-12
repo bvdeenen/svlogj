@@ -127,11 +127,3 @@ func envAnsiColor() string {
 func envTimeConfig() string {
 	return os.Getenv("SVLOGJ_TIMECONFIG")
 }
-
-func SocklogDir() string {
-	v:= os.Getenv("SVLOGJ_SOCKLOGDIR")
-	if len(v)!=0 {
-		return v
-	}
-	return "/var/log/socklog"
-}

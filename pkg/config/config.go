@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"svlogj/cmd"
 	"svlogj/pkg/svlog"
 	"svlogj/pkg/types"
 	"svlogj/pkg/utils"
@@ -39,7 +38,7 @@ func generateConfig() types.Config {
 		what.Add(m[3])
 	}
 
-	root := cmd.SocklogDir()
+	root := utils.SocklogDir()
 	var confFile *types.ConfigFile
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		cobra.CheckErr(err)

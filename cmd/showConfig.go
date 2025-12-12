@@ -53,7 +53,7 @@ func showConfigAsTable(c types.Config) {
 	}
 	t.Render()
 
-	fmt.Println("The services are the subdirectories in ", SocklogDir())
+	fmt.Println("The services are the subdirectories in ", utils.SocklogDir())
 	t = table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"Service", "config"})

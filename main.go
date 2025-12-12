@@ -9,13 +9,14 @@ import (
 	"io/fs"
 	"os"
 	"svlogj/cmd"
+	"svlogj/pkg/utils"
 
 	"github.com/spf13/cobra"
 )
 
 func main() {
 
-	file, err := os.Open(cmd.SocklogDir())
+	file, err := os.Open(utils.SocklogDir())
 	if err != nil {
 		var pathError *fs.PathError
 		switch {
@@ -30,7 +31,7 @@ Add yourself to the socklog group
 	sudo usermod -aG socklog $USER
 
 and then log out and log in again (or use 'newgrp socklog' in an existing shell)
-`, cmd.SocklogDir())
+`, utils.SocklogDir())
 			os.Exit(1)
 		default:
 			cobra.CheckErr(err)

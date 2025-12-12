@@ -43,3 +43,11 @@ func RemoveEmptyStrings(l iter.Seq[string]) []string {
 func NoFilesEmptyCompletion(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }
+
+func SocklogDir() string {
+	v := os.Getenv("SVLOGJ_SOCKLOGDIR")
+	if len(v) != 0 {
+		return v
+	}
+	return "/var/log/socklog"
+}

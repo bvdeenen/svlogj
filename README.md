@@ -27,6 +27,12 @@ Has the following features
   * `grep` style `before`, `after` and `context` flags, so you can easily see what happened around your line of interest
   * colorization of the output (which can ofcourse be disabled)
 
+Example:
+
+    svlogj --entity elogind-daemon -B2 --after=1 --time-config local
+
+![sample](docs/svlogj-sample.png)
+
 # Full documentation
 The best documentation will always be using the tool itself: `svlogj help <command>` or `svlogj <command> <subcommand> --help`
 

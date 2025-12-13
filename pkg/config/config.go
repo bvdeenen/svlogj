@@ -86,6 +86,8 @@ func generateConfig() types.Config {
 			Follow: false,
 		},
 		LineHandler: func(info types.Info) {
+			facilities.Add(info.Facility)
+			levels.Add(info.Level)
 			entities.Add(info.Entity)
 		},
 	}

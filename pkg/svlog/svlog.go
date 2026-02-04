@@ -62,9 +62,9 @@ func (l *SvLogger) ParseLog() {
 
 	var cmd *exec.Cmd
 	if len(l.ParseConfig.Service) == 0 {
-		cmd = exec.Command("svlogtail")
+		cmd = exec.Command("stdbuf", "-oL", "svlogtail")
 	} else {
-		cmd = exec.Command("svlogtail", l.ParseConfig.Service)
+		cmd = exec.Command("stdbuf", "-oL", "svlogtail", l.ParseConfig.Service)
 	}
 	pipe, _ := cmd.StdoutPipe()
 	defer func(pipe io.ReadCloser) {
